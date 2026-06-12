@@ -16,10 +16,15 @@ import (
 var version = "dev"
 
 func main() {
-	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr, clipboard.Copy))
+	os.Exit(run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr, clipboard.Copy))
 }
 
-func run(args []string, stdout, stderr io.Writer, copyToClipboard func(string) error) int {
+func run(
+	args []string,
+	stdin io.Reader,
+	stdout, stderr io.Writer,
+	copyToClipboard func(string) error,
+) int {
 	flags := flag.NewFlagSet("sop", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 
@@ -32,8 +37,9 @@ func run(args []string, stdout, stderr io.Writer, copyToClipboard func(string) e
 	flags.BoolVar(&noCopy, "no-copy", false, "do not copy the result to the clipboard")
 	flags.BoolVar(&showVersion, "version", false, "print the SOP version and exit")
 	flags.Usage = func() {
-		fmt.Fprintln(stderr, "Usage: sop [--output PATH] [--force] [--no-copy] <input-file>")
+		fmt.Fprintln(stderr, "Usage: sop [--output PATH] [--force] [--no-copy] <input-file|->")
 		fmt.Fprintln(stderr, "       sop --version")
+		fmt.Fprintln(stderr, "Use - to read input from standard input.")
 		flags.PrintDefaults()
 	}
 
@@ -58,15 +64,15 @@ func run(args []string, stdout, stderr io.Writer, copyToClipboard func(string) e
 	}
 
 	inputPath := flags.Arg(0)
-	data, err := os.ReadFile(inputPath)
+	data, inputName, err := readInput(inputPath, stdin)
 	if err != nil {
-		fmt.Fprintf(stderr, "sop: read %s: %v\n", inputPath, err)
+		fmt.Fprintf(stderr, "sop: read %s: %v\n", inputName, err)
 		return 1
 	}
 
 	result, importInfo, err := importer.Convert(data)
 	if err != nil {
-		fmt.Fprintf(stderr, "sop: import %s: %v\n", inputPath, err)
+		fmt.Fprintf(stderr, "sop: import %s: %v\n", inputName, err)
 		return 1
 	}
 	if outputPath != "" {
@@ -87,6 +93,16 @@ func run(args []string, stdout, stderr io.Writer, copyToClipboard func(string) e
 
 	printSummary(stderr, result, importInfo, outputPath, noCopy, clipboardErr)
 	return 0
+}
+
+func readInput(path string, stdin io.Reader) ([]byte, string, error) {
+	if path == "-" {
+		data, err := io.ReadAll(stdin)
+		return data, "standard input", err
+	}
+
+	data, err := os.ReadFile(path)
+	return data, path, err
 }
 
 func writeResult(path, output string, force bool) error {

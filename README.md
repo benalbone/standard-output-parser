@@ -30,7 +30,7 @@ go build -trimpath -o sop ./cmd/sop
 ## Usage
 
 ```text
-sop [--output PATH] [--force] [--no-copy] <input-file>
+sop [--output PATH] [--force] [--no-copy] <input-file|->
 sop --version
 ```
 
@@ -41,6 +41,8 @@ sop products.xlsx
 sop --no-copy barcodes.csv
 sop --output formatted.txt products.xlsx
 sop --output formatted.txt --force products.xlsx
+pbpaste | sop -
+cat barcodes.txt | sop --no-copy -
 ```
 
 The formatted result is written to standard output and copied to the clipboard
@@ -49,6 +51,15 @@ can be redirected safely:
 
 ```bash
 sop --no-copy products.xlsx > formatted.txt
+```
+
+Use `-` as the input argument to read from standard input. This allows text
+from the clipboard, another command, an archive tool, or an export pipeline to
+be processed without first creating a temporary file:
+
+```bash
+pbpaste | sop -
+unzip -p exports.zip products.csv | sop --no-copy -
 ```
 
 Options:
@@ -67,6 +78,7 @@ extension:
   first 50 rows of each sheet for Barcode, EAN, GTIN, or UPC column headings.
 - CSV, TSV, pipe-delimited exports, and other readable text files.
 - UTF-8 and UTF-16 text.
+- Standard input when `-` is supplied as the input argument.
 
 Legacy binary `.xls` files should be saved as `.xlsx` or CSV. Other binary
 formats are rejected instead of being scanned for unrelated internal numbers.

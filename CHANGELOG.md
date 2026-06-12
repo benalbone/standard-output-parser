@@ -6,6 +6,10 @@ The project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Standard input support through `sop -` for pipelines and clipboard input.
+
 ## [0.1.0] - 2026-06-12
 
 ### Added
