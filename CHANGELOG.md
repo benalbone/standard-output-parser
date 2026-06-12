@@ -6,6 +6,8 @@ The project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-06-12
+
 ### Added
 
 - Plain-text and Excel barcode extraction.
@@ -14,4 +16,5 @@ The project follows [Semantic Versioning](https://semver.org/).
 - Clipboard and output-file support.
 - Version reporting through `sop --version`.
 
-[Unreleased]: https://github.com/benalbone/standard-output-parser/commits/main
+[Unreleased]: https://github.com/benalbone/standard-output-parser/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/benalbone/standard-output-parser/releases/tag/v0.1.0
