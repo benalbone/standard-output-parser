@@ -18,7 +18,7 @@ func TestRunPrintsCopiesAndSummarises(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	var copied string
-	code := run([]string{input}, &stdout, &stderr, func(text string) error {
+	code := run([]string{input}, strings.NewReader(""), &stdout, &stderr, func(text string) error {
 		copied = text
 		return nil
 	})
@@ -48,7 +48,7 @@ func TestRunPrintsDevelopmentVersion(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	code := run([]string{"--version"}, &stdout, &stderr, func(string) error {
+	code := run([]string{"--version"}, strings.NewReader(""), &stdout, &stderr, func(string) error {
 		t.Fatal("clipboard should not be called")
 		return nil
 	})
@@ -65,7 +65,7 @@ func TestRunRejectsInputWithVersion(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	code := run([]string{"--version", "input.txt"}, &stdout, &stderr, func(string) error {
+	code := run([]string{"--version", "input.txt"}, strings.NewReader(""), &stdout, &stderr, func(string) error {
 		return nil
 	})
 
@@ -89,6 +89,7 @@ func TestRunSavesWithTrailingNewlineAndRequiresForce(t *testing.T) {
 	var stderr bytes.Buffer
 	code := run(
 		[]string{"--output", output, "--no-copy", input},
+		strings.NewReader(""),
 		&stdout,
 		&stderr,
 		func(string) error { t.Fatal("clipboard should not be called"); return nil },
@@ -107,6 +108,7 @@ func TestRunSavesWithTrailingNewlineAndRequiresForce(t *testing.T) {
 	stderr.Reset()
 	code = run(
 		[]string{"--output", output, "--no-copy", input},
+		strings.NewReader(""),
 		&stdout,
 		&stderr,
 		func(string) error { return nil },
@@ -118,6 +120,7 @@ func TestRunSavesWithTrailingNewlineAndRequiresForce(t *testing.T) {
 	stderr.Reset()
 	code = run(
 		[]string{"--output", output, "--force", "--no-copy", input},
+		strings.NewReader(""),
 		&stdout,
 		&stderr,
 		func(string) error { return nil },
@@ -135,7 +138,7 @@ func TestRunDoesNotCopyWhenNoBarcodesAreFound(t *testing.T) {
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
-	code := run([]string{input}, &stdout, &stderr, func(string) error {
+	code := run([]string{input}, strings.NewReader(""), &stdout, &stderr, func(string) error {
 		t.Fatal("clipboard should not be called")
 		return nil
 	})
@@ -159,7 +162,7 @@ func TestRunTreatsClipboardFailureAsWarning(t *testing.T) {
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
-	code := run([]string{input}, &stdout, &stderr, func(string) error {
+	code := run([]string{input}, strings.NewReader(""), &stdout, &stderr, func(string) error {
 		return errors.New("clipboard unavailable")
 	})
 
@@ -172,4 +175,58 @@ func TestRunTreatsClipboardFailureAsWarning(t *testing.T) {
 	if stdout.String() != "'12345678'\n" {
 		t.Fatalf("unexpected stdout: %q", stdout.String())
 	}
+}
+
+func TestRunReadsStandardInput(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	var copied string
+
+	code := run(
+		[]string{"-"},
+		strings.NewReader("00000000|1234567890123"),
+		&stdout,
+		&stderr,
+		func(text string) error {
+			copied = text
+			return nil
+		},
+	)
+
+	const want = "'00000000','1234567890123'"
+	if code != 0 {
+		t.Fatalf("exit code = %d, stderr = %s", code, stderr.String())
+	}
+	if stdout.String() != want+"\n" {
+		t.Fatalf("stdout = %q, want %q", stdout.String(), want+"\n")
+	}
+	if copied != want {
+		t.Fatalf("copied = %q, want %q", copied, want)
+	}
+	if !strings.Contains(stderr.String(), "Found 2 barcodes: 2 standard, 0 nonstandard.") {
+		t.Fatalf("unexpected stderr: %s", stderr.String())
+	}
+}
+
+func TestRunReportsStandardInputReadFailure(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	code := run([]string{"-"}, failingReader{}, &stdout, &stderr, func(string) error {
+		t.Fatal("clipboard should not be called")
+		return nil
+	})
+
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "read standard input: test read failure") {
+		t.Fatalf("unexpected stderr: %s", stderr.String())
+	}
+}
+
+type failingReader struct{}
+
+func (failingReader) Read([]byte) (int, error) {
+	return 0, errors.New("test read failure")
 }
