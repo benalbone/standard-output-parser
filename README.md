@@ -110,7 +110,7 @@ Release builds inject the version:
 
 ```bash
 go build -trimpath \
-  -ldflags="-s -w -X main.version=0.1.0" \
+  -ldflags="-s -w -X main.version=0.2.0" \
   -o dist/sop ./cmd/sop
 ```
 

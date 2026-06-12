@@ -6,6 +6,8 @@ The project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-12
+
 ### Added
 
 - Standard input support through `sop -` for pipelines and clipboard input.
@@ -20,5 +22,6 @@ The project follows [Semantic Versioning](https://semver.org/).
 - Clipboard and output-file support.
 - Version reporting through `sop --version`.
 
-[Unreleased]: https://github.com/benalbone/standard-output-parser/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/benalbone/standard-output-parser/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/benalbone/standard-output-parser/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/benalbone/standard-output-parser/releases/tag/v0.1.0
