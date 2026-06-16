@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestRunPrintsCopiesAndSummarises(t *testing.T) {
+func TestRunPrintsCopiesAndKeepsDefaultDiagnosticsQuiet(t *testing.T) {
 	input := filepath.Join(t.TempDir(), "input.csv")
 	if err := os.WriteFile(input, []byte("00000000|123456|00000000"), 0o644); err != nil {
 		t.Fatal(err)
@@ -33,14 +33,68 @@ func TestRunPrintsCopiesAndSummarises(t *testing.T) {
 	if copied != want {
 		t.Fatalf("copied = %q, want %q", copied, want)
 	}
+	if !strings.Contains(stderr.String(), "Copied 3 formatted barcodes to the clipboard.") {
+		t.Fatalf("stderr missing copy confirmation:\n%s", stderr.String())
+	}
+	for _, hidden := range []string{
+		"Found 3 barcodes",
+		"duplicate '00000000'",
+		"'123456', has 6 digits",
+	} {
+		if strings.Contains(stderr.String(), hidden) {
+			t.Fatalf("stderr unexpectedly contains %q:\n%s", hidden, stderr.String())
+		}
+	}
+}
+
+func TestRunShowsWarningsWhenRequested(t *testing.T) {
+	input := filepath.Join(t.TempDir(), "input.csv")
+	if err := os.WriteFile(input, []byte("00000000|123456|00000000"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := run([]string{"--warnings", input}, strings.NewReader(""), &stdout, &stderr, func(string) error {
+		return nil
+	})
+
+	if code != 0 {
+		t.Fatalf("exit code = %d, stderr = %s", code, stderr.String())
+	}
 	for _, expected := range []string{
 		"Found 3 barcodes: 2 standard, 1 nonstandard.",
+		"Copied 3 formatted barcodes to the clipboard.",
 		"duplicate '00000000' appears 2 times",
 		"'123456', has 6 digits",
 	} {
 		if !strings.Contains(stderr.String(), expected) {
 			t.Fatalf("stderr missing %q:\n%s", expected, stderr.String())
 		}
+	}
+}
+
+func TestRunNoCopyStaysQuietByDefault(t *testing.T) {
+	input := filepath.Join(t.TempDir(), "input.csv")
+	if err := os.WriteFile(input, []byte("00000000|123456"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := run([]string{"--no-copy", input}, strings.NewReader(""), &stdout, &stderr, func(string) error {
+		t.Fatal("clipboard should not be called")
+		return nil
+	})
+
+	if code != 0 {
+		t.Fatalf("exit code = %d, stderr = %s", code, stderr.String())
+	}
+	if stdout.String() != "'00000000','123456'\n" {
+		t.Fatalf("stdout = %q", stdout.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
 	}
 }
 
@@ -203,7 +257,7 @@ func TestRunReadsStandardInput(t *testing.T) {
 	if copied != want {
 		t.Fatalf("copied = %q, want %q", copied, want)
 	}
-	if !strings.Contains(stderr.String(), "Found 2 barcodes: 2 standard, 0 nonstandard.") {
+	if !strings.Contains(stderr.String(), "Copied 2 formatted barcodes to the clipboard.") {
 		t.Fatalf("unexpected stderr: %s", stderr.String())
 	}
 }

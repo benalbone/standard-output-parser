@@ -6,6 +6,15 @@ The project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Added `--warnings` to show counts, duplicate notices, and nonstandard-length
+  warnings on demand.
+
+### Changed
+
+- Hid routine warning details by default so everyday CLI output stays minimal.
+
 ## [0.2.0] - 2026-06-12
 
 ### Added
