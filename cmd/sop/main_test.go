@@ -11,7 +11,7 @@ import (
 
 func TestRunPrintsCopiesAndKeepsDefaultDiagnosticsQuiet(t *testing.T) {
 	input := filepath.Join(t.TempDir(), "input.csv")
-	if err := os.WriteFile(input, []byte("00000000|123456|00000000"), 0o644); err != nil {
+	if err := os.WriteFile(input, []byte("00000000|123456|123456789012|00000000"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -23,7 +23,7 @@ func TestRunPrintsCopiesAndKeepsDefaultDiagnosticsQuiet(t *testing.T) {
 		return nil
 	})
 
-	want := "'00000000','123456','00000000'"
+	want := "'00000000','0123456789012','00000000'"
 	if code != 0 {
 		t.Fatalf("exit code = %d, stderr = %s", code, stderr.String())
 	}
@@ -37,7 +37,9 @@ func TestRunPrintsCopiesAndKeepsDefaultDiagnosticsQuiet(t *testing.T) {
 		t.Fatalf("stderr missing copy confirmation:\n%s", stderr.String())
 	}
 	for _, hidden := range []string{
-		"Found 3 barcodes",
+		"Found 3 supported barcodes",
+		"Skipped",
+		"normalized",
 		"duplicate '00000000'",
 		"'123456', has 6 digits",
 	} {
@@ -49,7 +51,7 @@ func TestRunPrintsCopiesAndKeepsDefaultDiagnosticsQuiet(t *testing.T) {
 
 func TestRunShowsWarningsWhenRequested(t *testing.T) {
 	input := filepath.Join(t.TempDir(), "input.csv")
-	if err := os.WriteFile(input, []byte("00000000|123456|00000000"), 0o644); err != nil {
+	if err := os.WriteFile(input, []byte("00000000|123456|123456789012|00000000"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -63,10 +65,13 @@ func TestRunShowsWarningsWhenRequested(t *testing.T) {
 		t.Fatalf("exit code = %d, stderr = %s", code, stderr.String())
 	}
 	for _, expected := range []string{
-		"Found 3 barcodes: 2 standard, 1 nonstandard.",
+		"Found 3 supported barcodes.",
+		"Normalized 1 12-digit barcode by adding a leading zero.",
+		"Skipped 1 unsupported numeric value.",
 		"Copied 3 formatted barcodes to the clipboard.",
+		"Info: item 3, '123456789012', was normalized to '0123456789012'.",
 		"duplicate '00000000' appears 2 times",
-		"'123456', has 6 digits",
+		"'123456', has 6 digits (expected 8, 12, or 13); skipped",
 	} {
 		if !strings.Contains(stderr.String(), expected) {
 			t.Fatalf("stderr missing %q:\n%s", expected, stderr.String())
@@ -90,7 +95,7 @@ func TestRunNoCopyStaysQuietByDefault(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit code = %d, stderr = %s", code, stderr.String())
 	}
-	if stdout.String() != "'00000000','123456'\n" {
+	if stdout.String() != "'00000000'\n" {
 		t.Fatalf("stdout = %q", stdout.String())
 	}
 	if stderr.Len() != 0 {
@@ -186,7 +191,7 @@ func TestRunSavesWithTrailingNewlineAndRequiresForce(t *testing.T) {
 
 func TestRunDoesNotCopyWhenNoBarcodesAreFound(t *testing.T) {
 	input := filepath.Join(t.TempDir(), "input.txt")
-	if err := os.WriteFile(input, []byte("Barcode,Description"), 0o644); err != nil {
+	if err := os.WriteFile(input, []byte("Barcode,Description\n123456,Short code"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -203,7 +208,7 @@ func TestRunDoesNotCopyWhenNoBarcodesAreFound(t *testing.T) {
 	if stdout.Len() != 0 {
 		t.Fatalf("stdout = %q, want empty", stdout.String())
 	}
-	if !strings.Contains(stderr.String(), "clipboard was not changed") {
+	if !strings.Contains(stderr.String(), "No supported 8-, 12-, or 13-digit barcode values were found") {
 		t.Fatalf("unexpected stderr: %s", stderr.String())
 	}
 }
