@@ -14,9 +14,9 @@ func TestConvertCommonInputFormats(t *testing.T) {
 	}{
 		{
 			name:   "quoted csv and crlf",
-			input:  "\"00000000\",\"0000000000001\"\r\n\"12345678\",\"9999999999999\"\r\n",
-			values: []string{"00000000", "0000000000001", "12345678", "9999999999999"},
-			output: "'00000000','0000000000001','12345678','9999999999999'",
+			input:  "\"00000000\",\"0000000000001\"\r\n\"12345678\",\"123456789012\"\r\n",
+			values: []string{"00000000", "0000000000001", "12345678", "0123456789012"},
+			output: "'00000000','0000000000001','12345678','0123456789012'",
 		},
 		{
 			name:   "pipes whitespace tabs and mixed delimiters",
@@ -66,24 +66,47 @@ func TestConvertIgnoresDigitsEmbeddedInWords(t *testing.T) {
 	}
 }
 
-func TestConvertIncludesEveryStandaloneLengthWithWarnings(t *testing.T) {
-	result := Convert("1,123456,12345678,1234567890123,12345678901234")
+func TestConvertFiltersUnsupportedLengthsAndNormalizesTwelveDigits(t *testing.T) {
+	result := Convert("1,123456,12345678,123456789012,1234567890123,12345678901234")
 
-	want := []string{"1", "123456", "12345678", "1234567890123", "12345678901234"}
+	want := []string{"12345678", "0123456789012", "1234567890123"}
 	if !reflect.DeepEqual(result.Values, want) {
 		t.Fatalf("values = %#v, want %#v", result.Values, want)
 	}
-	if result.StandardCount() != 2 {
-		t.Fatalf("standard count = %d, want 2", result.StandardCount())
+	if result.Output != "'12345678','0123456789012','1234567890123'" {
+		t.Fatalf("output = %q", result.Output)
 	}
 
-	wantWarnings := []LengthWarning{
+	wantSkipped := []SkippedValue{
 		{Value: "1", Length: 1, Position: 1},
 		{Value: "123456", Length: 6, Position: 2},
-		{Value: "12345678901234", Length: 14, Position: 5},
+		{Value: "12345678901234", Length: 14, Position: 6},
 	}
-	if !reflect.DeepEqual(result.Nonstandard, wantWarnings) {
-		t.Fatalf("warnings = %#v, want %#v", result.Nonstandard, wantWarnings)
+	if !reflect.DeepEqual(result.Skipped, wantSkipped) {
+		t.Fatalf("skipped = %#v, want %#v", result.Skipped, wantSkipped)
+	}
+
+	wantNormalized := []NormalizedValue{
+		{Original: "123456789012", Value: "0123456789012", Position: 4},
+	}
+	if !reflect.DeepEqual(result.Normalized, wantNormalized) {
+		t.Fatalf("normalized = %#v, want %#v", result.Normalized, wantNormalized)
+	}
+}
+
+func TestConvertReportsDuplicatesAfterNormalization(t *testing.T) {
+	result := Convert("123456789012|0123456789012")
+
+	wantValues := []string{"0123456789012", "0123456789012"}
+	if !reflect.DeepEqual(result.Values, wantValues) {
+		t.Fatalf("values = %#v, want %#v", result.Values, wantValues)
+	}
+
+	wantDuplicates := []Duplicate{
+		{Value: "0123456789012", Count: 2, FirstPosition: 1},
+	}
+	if !reflect.DeepEqual(result.Duplicates, wantDuplicates) {
+		t.Fatalf("duplicates = %#v, want %#v", result.Duplicates, wantDuplicates)
 	}
 }
 

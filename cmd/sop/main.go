@@ -36,7 +36,7 @@ func run(
 	flags.StringVar(&outputPath, "output", "", "save the formatted result to this file")
 	flags.BoolVar(&force, "force", false, "overwrite an existing output file")
 	flags.BoolVar(&noCopy, "no-copy", false, "do not copy the result to the clipboard")
-	flags.BoolVar(&showWarnings, "warnings", false, "show counts, duplicate notices, and nonstandard-length warnings")
+	flags.BoolVar(&showWarnings, "warnings", false, "show counts, normalization notes, duplicate notices, and skipped values")
 	flags.BoolVar(&showVersion, "version", false, "print the SOP version and exit")
 	flags.Usage = func() {
 		fmt.Fprintln(stderr, "Usage: sop [--output PATH] [--force] [--no-copy] [--warnings] <input-file|->")
@@ -153,19 +153,33 @@ func printSummary(
 	if showWarnings {
 		fmt.Fprintf(
 			writer,
-			"Found %d barcode%s: %d standard, %d nonstandard.\n",
+			"Found %d supported barcode%s.\n",
 			total,
 			plural(total),
-			result.StandardCount(),
-			len(result.Nonstandard),
 		)
+		if len(result.Normalized) > 0 {
+			fmt.Fprintf(
+				writer,
+				"Normalized %d 12-digit barcode%s by adding a leading zero.\n",
+				len(result.Normalized),
+				plural(len(result.Normalized)),
+			)
+		}
+		if len(result.Skipped) > 0 {
+			fmt.Fprintf(
+				writer,
+				"Skipped %d unsupported numeric value%s.\n",
+				len(result.Skipped),
+				plural(len(result.Skipped)),
+			)
+		}
 	}
 
 	if outputPath != "" {
 		fmt.Fprintf(writer, "Saved formatted output to %s.\n", outputPath)
 	}
 	if total == 0 {
-		fmt.Fprintln(writer, "No standalone numeric values were found; the clipboard was not changed.")
+		fmt.Fprintln(writer, "No supported 8-, 12-, or 13-digit barcode values were found; the clipboard was not changed.")
 	} else if noCopy {
 		if showWarnings {
 			fmt.Fprintln(writer, "Clipboard copy disabled.")
@@ -179,6 +193,15 @@ func printSummary(
 	if !showWarnings {
 		return
 	}
+	for _, normalized := range result.Normalized {
+		fmt.Fprintf(
+			writer,
+			"Info: item %d, '%s', was normalized to '%s'.\n",
+			normalized.Position,
+			normalized.Original,
+			normalized.Value,
+		)
+	}
 	for _, duplicate := range result.Duplicates {
 		fmt.Fprintf(
 			writer,
@@ -188,13 +211,13 @@ func printSummary(
 			duplicate.FirstPosition,
 		)
 	}
-	for _, warning := range result.Nonstandard {
+	for _, skipped := range result.Skipped {
 		fmt.Fprintf(
 			writer,
-			"Warning: item %d, '%s', has %d digits (expected 8 or 13).\n",
-			warning.Position,
-			warning.Value,
-			warning.Length,
+			"Warning: item %d, '%s', has %d digits (expected 8, 12, or 13); skipped.\n",
+			skipped.Position,
+			skipped.Value,
+			skipped.Length,
 		)
 	}
 }

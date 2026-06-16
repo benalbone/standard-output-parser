@@ -11,14 +11,20 @@ import (
 )
 
 func TestConvertPlainTextRegardlessOfFilename(t *testing.T) {
-	result, info, err := Convert([]byte("00000000|1234567890123|42"))
+	result, info, err := Convert([]byte("00000000|123456789012|1234567890123|42"))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	want := []string{"00000000", "1234567890123", "42"}
+	want := []string{"00000000", "0123456789012", "1234567890123"}
 	if !reflect.DeepEqual(result.Values, want) {
 		t.Fatalf("values = %#v, want %#v", result.Values, want)
+	}
+	if len(result.Normalized) != 1 || result.Normalized[0].Value != "0123456789012" {
+		t.Fatalf("unexpected normalized values: %#v", result.Normalized)
+	}
+	if len(result.Skipped) != 1 || result.Skipped[0].Value != "42" {
+		t.Fatalf("unexpected skipped values: %#v", result.Skipped)
 	}
 	if info.Format != "plain text" {
 		t.Fatalf("format = %q", info.Format)
@@ -51,7 +57,7 @@ func TestConvertXLSXReadsOnlyBarcodeColumns(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	want := []string{"00000000", "5012345678901", "123456", "00000000"}
+	want := []string{"00000000", "5012345678901", "00000000"}
 	if !reflect.DeepEqual(result.Values, want) {
 		t.Fatalf("values = %#v, want %#v", result.Values, want)
 	}
@@ -65,8 +71,8 @@ func TestConvertXLSXReadsOnlyBarcodeColumns(t *testing.T) {
 	if len(result.Duplicates) != 1 || result.Duplicates[0].Value != "00000000" {
 		t.Fatalf("unexpected duplicates: %#v", result.Duplicates)
 	}
-	if len(result.Nonstandard) != 1 || result.Nonstandard[0].Value != "123456" {
-		t.Fatalf("unexpected length warnings: %#v", result.Nonstandard)
+	if len(result.Skipped) != 1 || result.Skipped[0].Value != "123456" {
+		t.Fatalf("unexpected skipped values: %#v", result.Skipped)
 	}
 }
 

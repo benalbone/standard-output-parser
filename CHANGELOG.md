@@ -6,6 +6,13 @@ The project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Restricted output to standalone 8-, 12-, and 13-digit barcode values.
+- Normalized standalone 12-digit barcodes by adding a leading zero.
+- Skipped unsupported standalone numeric lengths instead of including them in
+  formatted output.
+
 ## [0.3.0] - 2026-06-16
 
 ### Added

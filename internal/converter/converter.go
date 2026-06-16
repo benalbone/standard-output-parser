@@ -13,27 +13,30 @@ type Duplicate struct {
 	FirstPosition int
 }
 
-// LengthWarning describes a barcode whose length is not the standard 8 or 13 digits.
-type LengthWarning struct {
+// SkippedValue describes a standalone numeric value ignored because its length is unsupported.
+type SkippedValue struct {
 	Value    string
 	Length   int
 	Position int
 }
 
+// NormalizedValue describes a 12-digit barcode converted to a 13-digit EAN by adding a leading zero.
+type NormalizedValue struct {
+	Original string
+	Value    string
+	Position int
+}
+
 // Result contains the canonical output and diagnostic details for the source data.
 type Result struct {
-	Values      []string
-	Output      string
-	Duplicates  []Duplicate
-	Nonstandard []LengthWarning
+	Values     []string
+	Output     string
+	Duplicates []Duplicate
+	Skipped    []SkippedValue
+	Normalized []NormalizedValue
 }
 
-// StandardCount returns the number of 8- or 13-digit values in the result.
-func (r Result) StandardCount() int {
-	return len(r.Values) - len(r.Nonstandard)
-}
-
-// Convert extracts standalone ASCII digit sequences and formats them for output.
+// Convert extracts supported standalone ASCII barcode sequences and formats them for output.
 func Convert(input string) Result {
 	return FromValues(Extract(input))
 }
@@ -43,41 +46,53 @@ func Extract(input string) []string {
 	return extract(input)
 }
 
-// FromValues formats already-extracted values and builds diagnostic metadata.
+// FromValues filters and formats already-extracted values and builds diagnostic metadata.
 func FromValues(values []string) Result {
-	result := Result{Values: values}
+	result := Result{}
 	if len(values) == 0 {
 		return result
 	}
 
-	counts := make(map[string]int, len(values))
-	firstPositions := make(map[string]int, len(values))
+	counts := make(map[string]int)
+	firstPositions := make(map[string]int)
 	var output strings.Builder
 
 	for index, value := range values {
 		position := index + 1
-		if index > 0 {
-			output.WriteByte(',')
-		}
-		output.WriteByte('\'')
-		output.WriteString(value)
-		output.WriteByte('\'')
 
-		counts[value]++
-		if _, exists := firstPositions[value]; !exists {
-			firstPositions[value] = position
-		}
-		if len(value) != 8 && len(value) != 13 {
-			result.Nonstandard = append(result.Nonstandard, LengthWarning{
+		formatted, normalized := supportedBarcode(value)
+		if formatted == "" {
+			result.Skipped = append(result.Skipped, SkippedValue{
 				Value:    value,
 				Length:   len(value),
 				Position: position,
 			})
+			continue
+		}
+		if normalized {
+			result.Normalized = append(result.Normalized, NormalizedValue{
+				Original: value,
+				Value:    formatted,
+				Position: position,
+			})
+		}
+
+		if len(result.Values) > 0 {
+			output.WriteByte(',')
+		}
+		output.WriteByte('\'')
+		output.WriteString(formatted)
+		output.WriteByte('\'')
+
+		result.Values = append(result.Values, formatted)
+		counts[formatted]++
+		if _, exists := firstPositions[formatted]; !exists {
+			firstPositions[formatted] = len(result.Values)
 		}
 	}
 
 	duplicateAdded := make(map[string]bool)
-	for _, value := range values {
+	for _, value := range result.Values {
 		if counts[value] > 1 && !duplicateAdded[value] {
 			result.Duplicates = append(result.Duplicates, Duplicate{
 				Value:         value,
@@ -90,6 +105,17 @@ func FromValues(values []string) Result {
 
 	result.Output = output.String()
 	return result
+}
+
+func supportedBarcode(value string) (string, bool) {
+	switch len(value) {
+	case 8, 13:
+		return value, false
+	case 12:
+		return "0" + value, true
+	default:
+		return "", false
+	}
 }
 
 func extract(input string) []string {

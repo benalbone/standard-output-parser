@@ -1,15 +1,15 @@
 # Standard Output Parser
 
-Standard Output Parser (`sop`) extracts barcode values from awkward text and
-Excel files and converts them into a canonical list:
+Standard Output Parser (`sop`) extracts supported barcode values from awkward
+text and Excel files and converts them into a canonical list:
 
 ```text
 '0000000000000','0000000000001','0000000000002'
 ```
 
-It preserves source order, leading zeroes, and duplicate occurrences. Values
-containing 8 or 13 digits are considered standard; every other standalone
-numeric value is retained and can be reported with `--warnings`.
+It preserves source order, leading zeroes, and duplicate occurrences. SOP keeps
+8- and 13-digit barcodes as-is, normalizes 12-digit barcodes by adding a leading
+zero, and ignores every other standalone numeric length.
 
 ## Install
 
@@ -47,16 +47,16 @@ cat barcodes.txt | sop --no-copy -
 ```
 
 The formatted result is written to standard output and copied to the clipboard
-by default. Routine duplicate and nonstandard-length warnings are hidden unless
-`--warnings` is supplied. This keeps everyday runs quiet while preserving
-pipe-friendly output:
+by default. Routine diagnostics are hidden unless `--warnings` is supplied. This
+keeps everyday runs quiet while preserving pipe-friendly output:
 
 ```bash
 sop --no-copy products.xlsx > formatted.txt
 ```
 
-With `--warnings`, detailed counts, Excel import details, duplicate notices,
-and nonstandard-length warnings are written to standard error:
+With `--warnings`, detailed counts, Excel import details, 12-digit
+normalization notes, duplicate notices, and skipped-value warnings are written
+to standard error:
 
 ```bash
 sop --warnings products.xlsx
@@ -76,9 +76,35 @@ Options:
 - `--output PATH` also saves the result with one trailing newline.
 - `--force` allows an existing output file to be overwritten.
 - `--no-copy` disables clipboard copying.
-- `--warnings` shows counts, duplicate notices, and nonstandard-length
-  warnings.
+- `--warnings` shows counts, normalization notes, duplicate notices, and
+  skipped-value warnings.
 - `--version` prints the installed version and exits.
+
+## Barcode Rules
+
+SOP only outputs these standalone ASCII digit sequences:
+
+- 8 digits, unchanged.
+- 12 digits, with a leading `0` added.
+- 13 digits, unchanged.
+
+Every other standalone numeric value is ignored. Numbers embedded inside words
+are ignored before length rules are applied.
+
+Example:
+
+```text
+12345678
+123456789012
+5012345678901
+123456
+```
+
+Output:
+
+```text
+'12345678','0123456789012','5012345678901'
+```
 
 ## Supported Input
 
@@ -122,7 +148,7 @@ Release builds inject the version:
 
 ```bash
 go build -trimpath \
-  -ldflags="-s -w -X main.version=0.3.0" \
+  -ldflags="-s -w -X main.version=0.4.0" \
   -o dist/sop ./cmd/sop
 ```
 
