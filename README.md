@@ -9,7 +9,7 @@ Excel files and converts them into a canonical list:
 
 It preserves source order, leading zeroes, and duplicate occurrences. Values
 containing 8 or 13 digits are considered standard; every other standalone
-numeric value is retained and reported as a warning.
+numeric value is retained and can be reported with `--warnings`.
 
 ## Install
 
@@ -30,7 +30,7 @@ go build -trimpath -o sop ./cmd/sop
 ## Usage
 
 ```text
-sop [--output PATH] [--force] [--no-copy] <input-file|->
+sop [--output PATH] [--force] [--no-copy] [--warnings] <input-file|->
 sop --version
 ```
 
@@ -39,6 +39,7 @@ Examples:
 ```bash
 sop products.xlsx
 sop --no-copy barcodes.csv
+sop --warnings products.xlsx
 sop --output formatted.txt products.xlsx
 sop --output formatted.txt --force products.xlsx
 pbpaste | sop -
@@ -46,11 +47,19 @@ cat barcodes.txt | sop --no-copy -
 ```
 
 The formatted result is written to standard output and copied to the clipboard
-by default. Counts and warnings are written to standard error, so the result
-can be redirected safely:
+by default. Routine duplicate and nonstandard-length warnings are hidden unless
+`--warnings` is supplied. This keeps everyday runs quiet while preserving
+pipe-friendly output:
 
 ```bash
 sop --no-copy products.xlsx > formatted.txt
+```
+
+With `--warnings`, detailed counts, Excel import details, duplicate notices,
+and nonstandard-length warnings are written to standard error:
+
+```bash
+sop --warnings products.xlsx
 ```
 
 Use `-` as the input argument to read from standard input. This allows text
@@ -67,6 +76,8 @@ Options:
 - `--output PATH` also saves the result with one trailing newline.
 - `--force` allows an existing output file to be overwritten.
 - `--no-copy` disables clipboard copying.
+- `--warnings` shows counts, duplicate notices, and nonstandard-length
+  warnings.
 - `--version` prints the installed version and exits.
 
 ## Supported Input
@@ -90,7 +101,8 @@ formats are rejected instead of being scanned for unrelated internal numbers.
 - Linux: `wl-copy`, `xclip`, or `xsel`
 
 Clipboard failure is reported as a warning and does not discard standard
-output or a requested output file.
+output or a requested output file. Clipboard failure is always shown, even when
+`--warnings` is not supplied.
 
 ## Development
 
@@ -110,7 +122,7 @@ Release builds inject the version:
 
 ```bash
 go build -trimpath \
-  -ldflags="-s -w -X main.version=0.2.0" \
+  -ldflags="-s -w -X main.version=0.3.0" \
   -o dist/sop ./cmd/sop
 ```
 

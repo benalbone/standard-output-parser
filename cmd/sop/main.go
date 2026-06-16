@@ -31,13 +31,15 @@ func run(
 	var outputPath string
 	var force bool
 	var noCopy bool
+	var showWarnings bool
 	var showVersion bool
 	flags.StringVar(&outputPath, "output", "", "save the formatted result to this file")
 	flags.BoolVar(&force, "force", false, "overwrite an existing output file")
 	flags.BoolVar(&noCopy, "no-copy", false, "do not copy the result to the clipboard")
+	flags.BoolVar(&showWarnings, "warnings", false, "show counts, duplicate notices, and nonstandard-length warnings")
 	flags.BoolVar(&showVersion, "version", false, "print the SOP version and exit")
 	flags.Usage = func() {
-		fmt.Fprintln(stderr, "Usage: sop [--output PATH] [--force] [--no-copy] <input-file|->")
+		fmt.Fprintln(stderr, "Usage: sop [--output PATH] [--force] [--no-copy] [--warnings] <input-file|->")
 		fmt.Fprintln(stderr, "       sop --version")
 		fmt.Fprintln(stderr, "Use - to read input from standard input.")
 		flags.PrintDefaults()
@@ -91,7 +93,7 @@ func run(
 		clipboardErr = copyToClipboard(result.Output)
 	}
 
-	printSummary(stderr, result, importInfo, outputPath, noCopy, clipboardErr)
+	printSummary(stderr, result, importInfo, outputPath, noCopy, clipboardErr, showWarnings)
 	return 0
 }
 
@@ -136,8 +138,9 @@ func printSummary(
 	outputPath string,
 	noCopy bool,
 	clipboardErr error,
+	showWarnings bool,
 ) {
-	if len(importInfo.Sources) > 0 {
+	if showWarnings && len(importInfo.Sources) > 0 {
 		fmt.Fprintf(
 			writer,
 			"Imported %s barcode column%s: %s.\n",
@@ -147,28 +150,35 @@ func printSummary(
 		)
 	}
 	total := len(result.Values)
-	fmt.Fprintf(
-		writer,
-		"Found %d barcode%s: %d standard, %d nonstandard.\n",
-		total,
-		plural(total),
-		result.StandardCount(),
-		len(result.Nonstandard),
-	)
+	if showWarnings {
+		fmt.Fprintf(
+			writer,
+			"Found %d barcode%s: %d standard, %d nonstandard.\n",
+			total,
+			plural(total),
+			result.StandardCount(),
+			len(result.Nonstandard),
+		)
+	}
 
 	if outputPath != "" {
 		fmt.Fprintf(writer, "Saved formatted output to %s.\n", outputPath)
 	}
 	if total == 0 {
-		fmt.Fprintln(writer, "Warning: no standalone numeric values were found; the clipboard was not changed.")
+		fmt.Fprintln(writer, "No standalone numeric values were found; the clipboard was not changed.")
 	} else if noCopy {
-		fmt.Fprintln(writer, "Clipboard copy disabled.")
+		if showWarnings {
+			fmt.Fprintln(writer, "Clipboard copy disabled.")
+		}
 	} else if clipboardErr != nil {
 		fmt.Fprintf(writer, "Warning: %v. The formatted output is still available on stdout.\n", clipboardErr)
 	} else {
-		fmt.Fprintln(writer, "Copied formatted output to the clipboard.")
+		fmt.Fprintf(writer, "Copied %d formatted barcode%s to the clipboard.\n", total, plural(total))
 	}
 
+	if !showWarnings {
+		return
+	}
 	for _, duplicate := range result.Duplicates {
 		fmt.Fprintf(
 			writer,
