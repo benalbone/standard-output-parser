@@ -30,7 +30,7 @@ go build -trimpath -o sop ./cmd/sop
 ## Usage
 
 ```text
-sop [--output PATH] [--force] [--no-copy] [--warnings] <input-file|->
+sop [--output PATH] [--force] [--no-copy] [--show-output] [--warnings] <input-file|->
 sop --version
 ```
 
@@ -38,20 +38,29 @@ Examples:
 
 ```bash
 sop products.xlsx
-sop --no-copy barcodes.csv
+sop --show-output barcodes.csv
+sop --show-output --no-copy barcodes.csv
 sop --warnings products.xlsx
 sop --output formatted.txt products.xlsx
 sop --output formatted.txt --force products.xlsx
 pbpaste | sop -
-cat barcodes.txt | sop --no-copy -
+cat barcodes.txt | sop --show-output --no-copy -
 ```
 
-The formatted result is written to standard output and copied to the clipboard
-by default. Routine diagnostics are hidden unless `--warnings` is supplied. This
-keeps everyday runs quiet while preserving pipe-friendly output:
+By default, the formatted result is copied to the clipboard and SOP prints only
+a short confirmation such as:
+
+```text
+Copied 1952 formatted barcodes to the clipboard.
+```
+
+Use `--show-output` when the canonical barcode list should also be written to
+standard output. Routine diagnostics remain hidden unless `--warnings` is
+supplied:
 
 ```bash
-sop --no-copy products.xlsx > formatted.txt
+sop --show-output products.xlsx
+sop --show-output --no-copy products.xlsx > formatted.txt
 ```
 
 With `--warnings`, detailed counts, Excel import details, 12-digit
@@ -68,7 +77,7 @@ be processed without first creating a temporary file:
 
 ```bash
 pbpaste | sop -
-unzip -p exports.zip products.csv | sop --no-copy -
+unzip -p exports.zip products.csv | sop --show-output --no-copy -
 ```
 
 Options:
@@ -76,6 +85,7 @@ Options:
 - `--output PATH` also saves the result with one trailing newline.
 - `--force` allows an existing output file to be overwritten.
 - `--no-copy` disables clipboard copying.
+- `--show-output` prints the canonical barcode list to standard output.
 - `--warnings` shows counts, normalization notes, duplicate notices, and
   skipped-value warnings.
 - `--version` prints the installed version and exits.
@@ -126,9 +136,9 @@ formats are rejected instead of being scanned for unrelated internal numbers.
 - Windows: `clip`
 - Linux: `wl-copy`, `xclip`, or `xsel`
 
-Clipboard failure is reported as a warning and does not discard standard
-output or a requested output file. Clipboard failure is always shown, even when
-`--warnings` is not supplied.
+Clipboard failure is always reported, even when `--warnings` is not supplied.
+Use `--show-output` or `--output` when the formatted result must remain
+available even if no supported clipboard command is installed.
 
 ## Development
 

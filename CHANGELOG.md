@@ -6,6 +6,15 @@ The project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Added `--show-output` to print the canonical barcode list to standard output.
+
+### Changed
+
+- Hid the canonical barcode list by default so normal runs print only the
+  clipboard confirmation.
+
 ## [0.4.0] - 2026-06-16
 
 ### Changed

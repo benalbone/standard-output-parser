@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestRunPrintsCopiesAndKeepsDefaultDiagnosticsQuiet(t *testing.T) {
+func TestRunCopiesAndKeepsDefaultOutputQuiet(t *testing.T) {
 	input := filepath.Join(t.TempDir(), "input.csv")
 	if err := os.WriteFile(input, []byte("00000000|123456|123456789012|00000000"), 0o644); err != nil {
 		t.Fatal(err)
@@ -27,14 +27,14 @@ func TestRunPrintsCopiesAndKeepsDefaultDiagnosticsQuiet(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit code = %d, stderr = %s", code, stderr.String())
 	}
-	if strings.TrimSuffix(stdout.String(), "\n") != want {
-		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout = %q, want empty", stdout.String())
 	}
 	if copied != want {
 		t.Fatalf("copied = %q, want %q", copied, want)
 	}
-	if !strings.Contains(stderr.String(), "Copied 3 formatted barcodes to the clipboard.") {
-		t.Fatalf("stderr missing copy confirmation:\n%s", stderr.String())
+	if stderr.String() != "Copied 3 formatted barcodes to the clipboard.\n" {
+		t.Fatalf("stderr = %q", stderr.String())
 	}
 	for _, hidden := range []string{
 		"Found 3 supported barcodes",
@@ -46,6 +46,30 @@ func TestRunPrintsCopiesAndKeepsDefaultDiagnosticsQuiet(t *testing.T) {
 		if strings.Contains(stderr.String(), hidden) {
 			t.Fatalf("stderr unexpectedly contains %q:\n%s", hidden, stderr.String())
 		}
+	}
+}
+
+func TestRunShowsFormattedOutputWhenRequested(t *testing.T) {
+	input := filepath.Join(t.TempDir(), "input.csv")
+	if err := os.WriteFile(input, []byte("00000000|123456789012"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := run([]string{"--show-output", "--no-copy", input}, strings.NewReader(""), &stdout, &stderr, func(string) error {
+		t.Fatal("clipboard should not be called")
+		return nil
+	})
+
+	if code != 0 {
+		t.Fatalf("exit code = %d, stderr = %s", code, stderr.String())
+	}
+	if stdout.String() != "'00000000','0123456789012'\n" {
+		t.Fatalf("stdout = %q", stdout.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
 	}
 }
 
@@ -63,6 +87,9 @@ func TestRunShowsWarningsWhenRequested(t *testing.T) {
 
 	if code != 0 {
 		t.Fatalf("exit code = %d, stderr = %s", code, stderr.String())
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout = %q, want empty", stdout.String())
 	}
 	for _, expected := range []string{
 		"Found 3 supported barcodes.",
@@ -95,8 +122,8 @@ func TestRunNoCopyStaysQuietByDefault(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit code = %d, stderr = %s", code, stderr.String())
 	}
-	if stdout.String() != "'00000000'\n" {
-		t.Fatalf("stdout = %q", stdout.String())
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout = %q, want empty", stdout.String())
 	}
 	if stderr.Len() != 0 {
 		t.Fatalf("stderr = %q, want empty", stderr.String())
@@ -231,8 +258,8 @@ func TestRunTreatsClipboardFailureAsWarning(t *testing.T) {
 	if !strings.Contains(stderr.String(), "clipboard unavailable") {
 		t.Fatalf("unexpected stderr: %s", stderr.String())
 	}
-	if stdout.String() != "'12345678'\n" {
-		t.Fatalf("unexpected stdout: %q", stdout.String())
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout = %q, want empty", stdout.String())
 	}
 }
 
@@ -242,7 +269,7 @@ func TestRunReadsStandardInput(t *testing.T) {
 	var copied string
 
 	code := run(
-		[]string{"-"},
+		[]string{"--show-output", "-"},
 		strings.NewReader("00000000|1234567890123"),
 		&stdout,
 		&stderr,
