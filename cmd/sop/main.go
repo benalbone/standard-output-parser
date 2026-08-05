@@ -31,15 +31,17 @@ func run(
 	var outputPath string
 	var force bool
 	var noCopy bool
+	var showOutput bool
 	var showWarnings bool
 	var showVersion bool
 	flags.StringVar(&outputPath, "output", "", "save the formatted result to this file")
 	flags.BoolVar(&force, "force", false, "overwrite an existing output file")
 	flags.BoolVar(&noCopy, "no-copy", false, "do not copy the result to the clipboard")
+	flags.BoolVar(&showOutput, "show-output", false, "print the formatted result to standard output")
 	flags.BoolVar(&showWarnings, "warnings", false, "show counts, normalization notes, duplicate notices, and skipped values")
 	flags.BoolVar(&showVersion, "version", false, "print the SOP version and exit")
 	flags.Usage = func() {
-		fmt.Fprintln(stderr, "Usage: sop [--output PATH] [--force] [--no-copy] [--warnings] <input-file|->")
+		fmt.Fprintln(stderr, "Usage: sop [--output PATH] [--force] [--no-copy] [--show-output] [--warnings] <input-file|->")
 		fmt.Fprintln(stderr, "       sop --version")
 		fmt.Fprintln(stderr, "Use - to read input from standard input.")
 		flags.PrintDefaults()
@@ -84,7 +86,7 @@ func run(
 		}
 	}
 
-	if result.Output != "" {
+	if showOutput && result.Output != "" {
 		fmt.Fprintln(stdout, result.Output)
 	}
 
@@ -185,7 +187,7 @@ func printSummary(
 			fmt.Fprintln(writer, "Clipboard copy disabled.")
 		}
 	} else if clipboardErr != nil {
-		fmt.Fprintf(writer, "Warning: %v. The formatted output is still available on stdout.\n", clipboardErr)
+		fmt.Fprintf(writer, "Warning: %v. The formatted output was not copied; use --show-output or --output to preserve it.\n", clipboardErr)
 	} else {
 		fmt.Fprintf(writer, "Copied %d formatted barcode%s to the clipboard.\n", total, plural(total))
 	}
