@@ -6,6 +6,8 @@ The project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-08-24
+
 ### Added
 
 - Added `--column` to place each quoted, comma-separated barcode on its own
@@ -58,7 +60,8 @@ The project follows [Semantic Versioning](https://semver.org/).
 - Clipboard and output-file support.
 - Version reporting through `sop --version`.
 
-[Unreleased]: https://github.com/benalbone/standard-output-parser/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/benalbone/standard-output-parser/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/benalbone/standard-output-parser/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/benalbone/standard-output-parser/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/benalbone/standard-output-parser/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/benalbone/standard-output-parser/compare/v0.2.0...v0.3.0
