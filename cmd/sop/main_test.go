@@ -73,6 +73,69 @@ func TestRunShowsFormattedOutputWhenRequested(t *testing.T) {
 	}
 }
 
+func TestRunCopiesColumnOutput(t *testing.T) {
+	input := filepath.Join(t.TempDir(), "input.csv")
+	if err := os.WriteFile(input, []byte("00000000|123456789012|5012345678901"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	var copied string
+	code := run([]string{"--column", input}, strings.NewReader(""), &stdout, &stderr, func(text string) error {
+		copied = text
+		return nil
+	})
+
+	const want = "'00000000',\n'0123456789012',\n'5012345678901'"
+	if code != 0 {
+		t.Fatalf("exit code = %d, stderr = %s", code, stderr.String())
+	}
+	if copied != want {
+		t.Fatalf("copied = %q, want %q", copied, want)
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout = %q, want empty", stdout.String())
+	}
+	if stderr.String() != "Copied 3 formatted barcodes to the clipboard.\n" {
+		t.Fatalf("stderr = %q", stderr.String())
+	}
+}
+
+func TestRunUsesColumnOutputForDisplayAndFile(t *testing.T) {
+	dir := t.TempDir()
+	input := filepath.Join(dir, "input.csv")
+	output := filepath.Join(dir, "output.txt")
+	if err := os.WriteFile(input, []byte("00000000|123456789012"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := run(
+		[]string{"--column", "--show-output", "--no-copy", "--output", output, input},
+		strings.NewReader(""),
+		&stdout,
+		&stderr,
+		func(string) error { t.Fatal("clipboard should not be called"); return nil },
+	)
+
+	const want = "'00000000',\n'0123456789012'\n"
+	if code != 0 {
+		t.Fatalf("exit code = %d, stderr = %s", code, stderr.String())
+	}
+	if stdout.String() != want {
+		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
+	}
+	saved, err := os.ReadFile(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(saved) != want {
+		t.Fatalf("saved output = %q, want %q", saved, want)
+	}
+}
+
 func TestRunShowsWarningsWhenRequested(t *testing.T) {
 	input := filepath.Join(t.TempDir(), "input.csv")
 	if err := os.WriteFile(input, []byte("00000000|123456|123456789012|00000000"), 0o644); err != nil {

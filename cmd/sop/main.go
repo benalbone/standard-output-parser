@@ -29,11 +29,13 @@ func run(
 	flags.SetOutput(stderr)
 
 	var outputPath string
+	var column bool
 	var force bool
 	var noCopy bool
 	var showOutput bool
 	var showWarnings bool
 	var showVersion bool
+	flags.BoolVar(&column, "column", false, "place each formatted barcode on its own line")
 	flags.StringVar(&outputPath, "output", "", "save the formatted result to this file")
 	flags.BoolVar(&force, "force", false, "overwrite an existing output file")
 	flags.BoolVar(&noCopy, "no-copy", false, "do not copy the result to the clipboard")
@@ -41,7 +43,7 @@ func run(
 	flags.BoolVar(&showWarnings, "warnings", false, "show counts, normalization notes, duplicate notices, and skipped values")
 	flags.BoolVar(&showVersion, "version", false, "print the SOP version and exit")
 	flags.Usage = func() {
-		fmt.Fprintln(stderr, "Usage: sop [--output PATH] [--force] [--no-copy] [--show-output] [--warnings] <input-file|->")
+		fmt.Fprintln(stderr, "Usage: sop [--column] [--output PATH] [--force] [--no-copy] [--show-output] [--warnings] <input-file|->")
 		fmt.Fprintln(stderr, "       sop --version")
 		fmt.Fprintln(stderr, "Use - to read input from standard input.")
 		flags.PrintDefaults()
@@ -79,24 +81,37 @@ func run(
 		fmt.Fprintf(stderr, "sop: import %s: %v\n", inputName, err)
 		return 1
 	}
+	formattedOutput := formatOutput(result, column)
 	if outputPath != "" {
-		if err := writeResult(outputPath, result.Output, force); err != nil {
+		if err := writeResult(outputPath, formattedOutput, force); err != nil {
 			fmt.Fprintf(stderr, "sop: save %s: %v\n", outputPath, err)
 			return 1
 		}
 	}
 
-	if showOutput && result.Output != "" {
-		fmt.Fprintln(stdout, result.Output)
+	if showOutput && formattedOutput != "" {
+		fmt.Fprintln(stdout, formattedOutput)
 	}
 
 	var clipboardErr error
-	if !noCopy && result.Output != "" {
-		clipboardErr = copyToClipboard(result.Output)
+	if !noCopy && formattedOutput != "" {
+		clipboardErr = copyToClipboard(formattedOutput)
 	}
 
 	printSummary(stderr, result, importInfo, outputPath, noCopy, clipboardErr, showWarnings)
 	return 0
+}
+
+func formatOutput(result converter.Result, column bool) string {
+	if !column || len(result.Values) == 0 {
+		return result.Output
+	}
+
+	quoted := make([]string, len(result.Values))
+	for index, value := range result.Values {
+		quoted[index] = "'" + value + "'"
+	}
+	return strings.Join(quoted, ",\n")
 }
 
 func readInput(path string, stdin io.Reader) ([]byte, string, error) {
