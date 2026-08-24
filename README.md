@@ -30,7 +30,7 @@ go build -trimpath -o sop ./cmd/sop
 ## Usage
 
 ```text
-sop [--output PATH] [--force] [--no-copy] [--show-output] [--warnings] <input-file|->
+sop [--column] [--output PATH] [--force] [--no-copy] [--show-output] [--warnings] <input-file|->
 sop --version
 ```
 
@@ -38,6 +38,7 @@ Examples:
 
 ```bash
 sop products.xlsx
+sop --column products.xlsx
 sop --show-output barcodes.csv
 sop --show-output --no-copy barcodes.csv
 sop --warnings products.xlsx
@@ -63,6 +64,16 @@ sop --show-output products.xlsx
 sop --show-output --no-copy products.xlsx > formatted.txt
 ```
 
+Use `--column` to keep the single quotes and commas while placing each barcode
+on its own line. This layout is used consistently for the clipboard,
+`--show-output`, and `--output`:
+
+```text
+'00000000',
+'0123456789012',
+'5012345678901'
+```
+
 With `--warnings`, detailed counts, Excel import details, 12-digit
 normalization notes, duplicate notices, and skipped-value warnings are written
 to standard error:
@@ -82,6 +93,7 @@ unzip -p exports.zip products.csv | sop --show-output --no-copy -
 
 Options:
 
+- `--column` places each quoted, comma-separated barcode on its own line.
 - `--output PATH` also saves the result with one trailing newline.
 - `--force` allows an existing output file to be overwritten.
 - `--no-copy` disables clipboard copying.

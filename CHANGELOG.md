@@ -6,6 +6,11 @@ The project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Added `--column` to place each quoted, comma-separated barcode on its own
+  line in clipboard, terminal, and saved output.
+
 ## [0.5.0] - 2026-08-05
 
 ### Added
